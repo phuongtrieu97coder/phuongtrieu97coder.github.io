@@ -325,296 +325,917 @@ function1();
       
       </script>
 -->
-<p>
+
 mkdir  UniversalTranslator
+
+        <br>
+        
 cd UniversalTranslator
  
  
-
+<br>
+        <br>
+        
  
 mkdir Website
+        <br>
+        <br>
+        
 touch Website/index.html
+        <br>
+
+        <br>
+        
 touch Website/scripts.js
- 
+ <br>
+        <br>
+        
  
 pipenv –three
- 
+ <br>
+        <br>
+        
  
  
 pipenv install boto3
  
- 
+ <br>
+        <br>
+        
  
  
 pipenv install chalice
- 
+ <br>
+        <br>
+        
  
  
  
  
 chalice new-project Capabilities
- 
+ <br>
+        <br>
+        
  
 cd Capabilities
+        <br>
+        <br>
+        
 mkdir chalicelib
+        <br>
+        <br>
+        
 touch chalicelib/_init_.py
  
- 
+ <br>
+        <br>
+        
  
  
 aws transcribe start-transcription-job –transcription-job-name <jobYourName> --language-code en-US –media-format wav –media MediaFileUri=https://s3.amazonaws.com/uc-bucket-ai/sample.wav –output-bucket-name uc-bucket-ai
- 
+ <br>
+        <br>
+        
  
 cd chalicelib
- 
+ <br>
+        <br>
+        
 nano speech_service.py
- 
+ <br>
+        <br>
+        
 
 import boto3
+    <br>
+        <br>
+        
 import time
+    <br>
+        <br>
+        
 class SpeechService:
+    <br>
+        <br>
+        
     def __init__(self, storage_service):
+    <br>
+        <br>
+        
         self.client = boto3.client('polly')
+    <br>
+        <br>
+        
         self.bucket_name = storage_service.get_storage_location()
+    <br>
+        <br>
+        
         self.storage_service = storage_service
+    <br>
+        <br>
+        
     def synthesize_speech(self, text, target_language):
+    <br>
+        <br>
+        
         POLL_DELAY = 5
+    <br>
+        <br>
+        
         voice_map = {
+    <br>
+        <br>
+        
             'en': 'Ivy',
+        
+    <br>
+        <br>
+        
             'de': 'Marlene',
+        <br>
+        <br>
+        
             'fr': 'Celine',
+    <br>
+        <br>
+        
             'it': 'Carla',
+    <br>
+        <br>
+        
             'es': 'Conchita'
+    <br>
+        <br>
+        
         }
+    <br>
+        <br>
+        
         response = self.client.start_speech_synthesis_task(
+    <br>
+        <br>
+        
             Text = text,
+    <br>
+        <br>
+        
             VoiceId = voice_map[target_language],
+    <br>
+        <br>
+        
             OutputFormat = 'mp3',
+
+    <br>
+        <br>
+        
             OutputS3BucketName = self.bucket_name
+    <br>
+        <br>
+        
         )
+    <br>
+        <br>
+        
         synthesis_task = {
+    <br>
+        <br>
+        
             'taskId': response['SynthesisTask']['TaskId'],
+    <br>
+        <br>
+        
             'taskStatus': 'inProgress'
+    <br>
+        <br>
+        
         }
+    <br>
+        <br>
+        
         while synthesis_task['taskStatus'] == 'inProgress'\
+    <br>
+        <br>
+        
                 or synthesis_task['taskStatus'] == 'scheduled':
+    <br>
+        <br>
+        
             time.sleep(POLL_DELAY)
+    <br>
+        <br>
+        
             response = self.client.get_speech_synthesis_task(
+    <br>
+        <br>
+        
                 TaskId = synthesis_task['taskId']
+    <br>
+        <br>
+        
             )
+    <br>
+        <br>
+        
             synthesis_task['taskStatus'] = response['SynthesisTask']['TaskStatus']
+    <br>
+        <br>
+        
             if synthesis_task['taskStatus'] == 'completed':
+    <br>
+        <br>
+        
                 synthesis_task['speechUri'] = response['SynthesisTask']['OutputUri']
+    <br>
+        <br>
+        
                 self.storage_service.make_file_public(synthesis_task['speechUri'])
+    <br>
+        <br>
+        
                 return synthesis_task['speechUri']
+    <br>
+        <br>
+        
         return ''
- 
+ <br>
+        <br>
+        
 
 
  
  
 nano storage_service.py
-
+<br>
+        <br>
+        
 
  
 
 import boto3
+    <br>
+        <br>
+        
 class StorageService:
+    <br>
+        <br>
+        
     def __init__(self, storage_location):
+    <br>
+        <br>
+        
         self.client = boto3.client('s3')
+    <br>
+        <br>
+        
         self.bucket_name = storage_location
+    <br>
+        <br>
+        
     def get_storage_location(self):
+    <br>
+        <br>
+        
         return self.bucket_name
+    <br>
+        <br>
+        
     def upload_file(self, file_bytes, file_name):
+    <br>
+        <br>
+        
         self.client.put_object(Bucket = self.bucket_name,
+    <br>
+        <br>
+        
                               Body = file_bytes,
+    <br>
+        <br>
+        
                               Key = file_name,
+    <br>
+        <br>
+        
                               ACL = 'public-read')
+    <br>
+        <br>
+        
         return {'fileId': file_name,
+    <br>
+        <br>
+        
                 'fileUrl': "http://" + self.bucket_name + ".s3.amazonaws.com/" + file_name}
+    <br>
+        <br>
+
+    
     def get_file(self, file_name):
+    <br>
+        <br>
+        
         response = self.client.get_object(Bucket = self.bucket_name, Key = file_name)
+    <br>
+        <br>
+        
         return response['Body'].read().decode('utf-8')
+    <br>
+        <br>
+        
     def make_file_public(self, uri):
+    <br>
+        <br>
+        
         parts = uri.split('/')
+    <br>
+        <br>
+        
         key = parts[-1]
+    <br>
+        <br>
+        
         bucket_name = parts[-2]
+    <br>
+        <br>
+        
         self.client.put_object_acl(Bucket = bucket_name,
+    <br>
+        <br>
+        
                                   Key = key,
+    <br>
+        <br>
+        
                                   ACL = 'public-read')
+    <br>
+        <br>
+        
  
  
  
 nano translation_service.py
- 
+ <br>
+        <br>
+        
 
 
 
 
 import boto3
+    <br>
+        <br>
+        
 class TranslationService:
+    <br>
+        <br>
+        
     def __init__(self):
+    <br>
+        <br>
+        
         self.client = boto3.client('translate')
+    <br>
+        <br>
+        
     def translate_text(self, text, source_language = 'auto', target_language = 'en'):
+    <br>
+        <br>
+        
         response = self.client.translate_text(
+    <br>
+        <br>
+        
             Text = text,
+    <br>
+        <br>
+        
             SourceLanguageCode = source_language,
+    <br>
+        <br>
+        
             TargetLanguageCode = target_language
+    <br>
+        <br>
+        
         )
+    <br>
+        <br>
+        
         translation = {
+    <br>
+        <br>
+        
             'translatedText': response['TranslatedText'],
+    <br>
+        <br>
+        
             'sourceLanguage': response['SourceLanguageCode'],
+    <br>
+        <br>
+        
             'targetLanguage': response['TargetLanguageCode']
+    <br>
+        <br>
+        
         }
+    <br>
+        <br>
+        
         return translation
+    <br>
+        <br>
+        
  
  
 
  
 nano transcription_service.py
+    <br>
+        <br>
+        
  
 
 
 import boto3
+    <br>
+        <br>
+        
 import datetime
+    <br>
+        <br>
+        
 import time
+    <br>
+        <br>
+        
 import json
+    <br>
+        <br>
+        
 class TranscriptionService:
+    <br>
+        <br>
+        
     def __init__(self, storage_service):
+    <br>
+        <br>
+        
         self.client = boto3.client('transcribe')
+    <br>
+        <br>
+        
         self.bucket_name = storage_service.get_storage_location()
+    <br>
+        <br>
+        
         self.storage_service = storage_service
+    <br>
+        <br>
+        
     def transcribe_audio(self, file_name, language):
+    <br>
+        <br>
+        
         POLL_DELAY = 5
+    <br>
+        <br>
+        
         language_map = {
+    <br>
+        <br>
+        
             'en': 'en-US',
+    <br>
+        <br>
+        
             'es': 'es-US',
+    <br>
+        <br>
+        
             'fr': 'fr-CA'
+    <br>
+        <br>
+        
         }
+    <br>
+        <br>
+        
         job_name = file_name + '-trans-' + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    <br>
+        <br>
+        
         response = self.client.start_transcription_job(
+    <br>
+        <br>
+        
             TranscriptionJobName = job_name,
+    <br>
+        <br>
+        
             LanguageCode = language_map[language],
+    <br>
+        <br>
+        
             MediaFormat = 'wav',
+    <br>
+        <br>
+        
             Media = {
+    <br>
+        <br>
+        
                 'MediaFileUri': "http://" + self.bucket_name + ".s3.amazonaws.com/" + file_name
+    <br>
+        <br>
+        
             },
+    <br>
+        <br>
+        
             OutputBucketName = self.bucket_name
+    <br>
+        <br>
+        
         )
+    <br>
+        <br>
+        
         transcription_job = {
+    <br>
+        <br>
+        
             'jobName': response['TranscriptionJob']['TranscriptionJobName'],
+    <br>
+        <br>
+        
             'jobStatus': 'IN_PROGRESS'
+    <br>
+        <br>
+        
         }
+    <br>
+        <br>
+        
         while transcription_job['jobStatus'] == 'IN_PROGRESS':
+    <br>
+        <br>
+        
             time.sleep(POLL_DELAY)
+    <br>
+        <br>
+        
             response = self.client.get_transcription_job(
+    <br>
+        <br>
+        
                 TranscriptionJobName = transcription_job['jobName']
+    <br>
+        <br>
+        
             )
+    <br>
+        <br>
+        
             transcription_job['jobStatus'] = response['TranscriptionJob']['TranscriptionJobStatus']
+    <br>
+        <br>
+        
         transcription_output = self.storage_service.get_file(job_name + '.json')
+    <br>
+        <br>
+        
         return self.extract_transcript(transcription_output)
+    <br>
+        <br>
+        
     @staticmethod
+    <br>
+        <br>
+        
     def extract_transcript(transcription_output):
+    <br>
+        <br>
+        
         transcription = json.loads(transcription_output)
+    <br>
+        <br>
+        
         if transcription['status'] != 'COMPLETED':
+    <br>
+        <br>
+        
             return 'Transcription not available.'
+    <br>
+        <br>
+        
         transcript = transcription['results']['transcripts'][0]['transcript']
+    <br>
+        <br>
+        
         return transcript
  
- 
+ <br>
+        <br>
+        
  
 cd ..
-
+<br>
+        <br>
+        
  
 nano app.py
  
-
+<br>
+        <br>
+        
 
 
 from chalice import Chalice
+    <br>
+        <br>
+        
 from chalicelib import storage_service
+    <br>
+        <br>
+        
 from chalicelib import transcription_service
+    <br>
+        <br>
+        
 from chalicelib import translation_service
+    <br>
+        <br>
+        
 from chalicelib import speech_service
+    <br>
+        <br>
+        
 import base64
+    <br>
+        <br>
+        
 import json
+    <br>
+        <br>
+        
 #####
+    <br>
+        <br>
+        
 # chalice app configuration
+    <br>
+        <br>
+        
 #####
+    <br>
+        <br>
+        
 app = Chalice(app_name='Capabilities')
+    <br>
+        <br>
+        
 app.debug = True
+    <br>
+        <br>
+        
 #####
+    <br>
+        <br>
+        
 # services initialization
+    <br>
+        <br>
+        
 #####
+    <br>
+        <br>
+        
 storage_location = 'uc-bucket-ai'
+    <br>
+        <br>
+        
 storage_service = storage_service.StorageService(storage_location)
+    <br>
+        <br>
+        
 transcription_service = transcription_service.TranscriptionService(storage_service)
+    <br>
+        <br>
+        
 translation_service = translation_service.TranslationService()
+    <br>
+        <br>
+        
 speech_service = speech_service.SpeechService(storage_service)
+    <br>
+        <br>
+        
 #####
+    <br>
+        <br>
+        
 # RESTful endpoints
+    <br>
+        <br>
+        
 #####
+    <br>
+        <br>
+        
 @app.route('/recordings', methods = ['POST'], cors = True)
+    <br>
+        <br>
+        
 def upload_recording():
+    <br>
+        <br>
+        
     """processes file upload and saves file to storage service"""
+    <br>
+        <br>
+        
     request_data = json.loads(app.current_request.raw_body)
+    <br>
+        <br>
+        
     file_name = request_data['filename']
+    <br>
+        <br>
+        
     file_bytes = base64.b64decode(request_data['filebytes'])
+    <br>
+        <br>
+        
     file_info = storage_service.upload_file(file_bytes, file_name)
+    <br>
+        <br>
+        
     return file_info
+    <br>
+        <br>
+        
 @app.route('/recordings/{recording_id}/translate-text', methods = ['POST'], cors = True)
+    <br>
+        <br>
+        
 def translate_recording(recording_id):
+    <br>
+        <br>
+        
     """transcribes the specified audio then translates the transcription text"""
+    <br>
+        <br>
+        
     request_data = json.loads(app.current_request.raw_body)
+    <br>
+        <br>
+        
     from_lang = request_data['fromLang']
+    <br>
+        <br>
+        
     to_lang = request_data['toLang']
+    <br>
+        <br>
+        
     transcription_text = transcription_service.transcribe_audio(recording_id, from_lang)
+    <br>
+        <br>
+        
     translation_text = translation_service.translate_text(transcription_text,
                                                           target_language = to_lang)
+    <br>
+        <br>
+        
     return {
+    <br>
+        <br>
+        
         'text': transcription_text,
+    <br>
+        <br>
+        
         'translation': translation_text
+    <br>
+        <br>
+        
     }
+    <br>
+        <br>
+        
 @app.route('/synthesize_speech', methods = ['POST'], cors = True)
+    <br>
+        <br>
+        
 def synthesize_speech():
+    <br>
+        <br>
+        
     """performs text-to-speech on the specified text / language"""
+    <br>
+        <br>
+        
     request_data = json.loads(app.current_request.raw_body)
+    <br>
+        <br>
+        
     text = request_data['text']
+    <br>
+        <br>
+        
     language = request_data['language']
+    <br>
+        <br>
+        
     translation_audio_url = speech_service.synthesize_speech(text, language)
+    <br>
+        <br>
+        
     return {
+    <br>
+        <br>
+        
         'audioUrl': translation_audio_url
+    <br>
+        <br>
+        
     }
  
-
+<br>
+        <br>
+        
  
  
 chalice local
  
-
+<br>
+        <br>
+        
  
 cd UniversalTranslator
+    <br>
+        <br>
+        
 pipenv shell
+    <br>
+        <br>
+        
 curl –header “Content-Type: application/json” –request POST –data '{"text":"Dies ist ein Test des Amazons Polly Service.","language":"de"}' http://127.0.0.1:8000/synthesize_speech
 
- 
+ <br>
+        <br>
+        
  
 cd Website
+    <br>
+        <br>
+        
 nano index.html
+<br>
+        <br>
+        
 
-
- 
+ <!--
 <!doctype html>
+    <br>
+        <br>
+        
 <html lang="en"/>
+    <br>
+        <br>
+        
     <head>
+        <br>
+        <br>
+        
         <meta charset="utf-8"/>
+        <br>
+        <br>
+        
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <br>
+        <br>
+        
         <title>Universal Translator</title>
+        <br>
+        <br>
+        
         <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+        <br>
+        <br>
+        
         <link rel="stylesheet" href="https://www.w3schools.com/lib/w3-theme-blue-grey.css">
+        <br>
+        <br>
+        
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <br>
+        <br>
+        
     </head>
+    <br>
+        <br>
+        
     <body>
+        
         <div>
             <div>
                 <span>Universal Translator</span>
@@ -681,196 +1302,787 @@ nano index.html
 </html>
  
 
- 
+    -->
+
+    
+ <br>
+        <br>
+        
 nano scripts.js
  
-
+<br>
+        <br>
+        
 
 
 "use strict";
+    <br>
+        <br>
+        
 const serverUrl = "http://127.0.0.1:8000";
+    <br>
+        <br>
+        
 class HttpError extends Error {
+    <br>
+        <br>
+        
     constructor(response) {
+    <br>
+        <br>
+        
         super(`${response.status} for ${response.url}`);
+    <br>
+        <br>
+        
         this.name = "HttpError";
+    <br>
+        <br>
+        
         this.response = response;
+    <br>
+        <br>
+        
     }
+    <br>
+        <br>
+        
 }
+    <br>
+        <br>
+        
 let audioRecorder;
+    <br>
+        <br>
+        
 let recordedAudio;
+    <br>
+        <br>
+        
 const mediaConstraints = {
+    <br>
+        <br>
+        
     audio: true
+    <br>
+        <br>
+        
 };
+    <br>
+        <br>
+        
 navigator.getUserMedia(mediaConstraints, onMediaSuccess, onMediaError);
+    <br>
+        <br>
+        
 const maxAudioLength = 30000;
+    <br>
+        <br>
+        
 let audioFile = {};
+    <br>
+        <br>
+        
 function onMediaSuccess(audioStream) {
+    <br>
+        <br>
+        
     audioRecorder = new MediaStreamRecorder(audioStream);
+    <br>
+        <br>
+        
     audioRecorder.mimeType = "audio/wav";
+    <br>
+        <br>
+        
     audioRecorder.ondataavailable = handleAudioData;
+    <br>
+        <br>
+        
 }
+    <br>
+        <br>
+        
 function onMediaError(error) {
+    <br>
+        <br>
+        
     alert("audio recording not available: " + error.message);
+    <br>
+        <br>
+        
 }
+    <br>
+        <br>
+        
 function startRecording() {
+    <br>
+        <br>
+        
     recordedAudio = [];
+    <br>
+        <br>
+        
     audioRecorder.start(maxAudioLength);
+    <br>
+        <br>
+        
 }
+    <br>
+        <br>
+        
 function stopRecording() {
+    <br>
+        <br>
+        
     audioRecorder.stop();
+    <br>
+        <br>
+        
 }
+    <br>
+        <br>
+        
 function handleAudioData(audioRecording) {
+    <br>
+        <br>
+        
     audioRecorder.stop();
+    <br>
+        <br>
+        
     audioFile = new File([audioRecording], "recorded_audio.wav", {
+    <br>
+        <br>
+        
         type: "audio/wav"
+    <br>
+        <br>
+        
     });
+    <br>
+        <br>
+        
     let audioElem = document.getElementById("recording-player");
+    <br>
+        <br>
+        
     audioElem.src = window.URL.createObjectURL(audioRecording);
+    <br>
+        <br>
+        
 }
+    <br>
+        <br>
+        
 let isRecording = false;
+    <br>
+        <br>
+        
 function toggleRecording() {
+    <br>
+        <br>
+        
     let toggleBtn = document.getElementById("record-toggle");
+    <br>
+        <br>
+        
     let translateBtn = document.getElementById("translate");
+    <br>
+        <br>
+        
     if (isRecording) {
+    <br>
+        <br>
+        
         toggleBtn.value = 'Record';
+    <br>
+        <br>
+        
         translateBtn.disabled = false;
+    <br>
+        <br>
+        
         stopRecording();
+    <br>
+        <br>
+        
     } else {
+    <br>
+        <br>
+        
         toggleBtn.value = 'Stop';
+    <br>
+        <br>
+        
         translateBtn.disabled = true;
+    <br>
+        <br>
+        
         startRecording();
+    <br>
+        <br>
+        
     }
+    <br>
+        <br>
+        
     isRecording = !isRecording;
+    <br>
+        <br>
+        
 }
+    <br>
+        <br>
+        
 async function uploadRecording() {
+    <br>
+        <br>
+        
     // encode recording file as base64 string for upload
+    <br>
+        <br>
+        
     let converter = new Promise(function(resolve, reject) {
+    <br>
+        <br>
+        
         const reader = new FileReader();
+    <br>
+        <br>
+        
         reader.readAsDataURL(audioFile);
-        reader.onload = () => resolve(reader.result
-            .toString().replace(/^data:(.*,)?/, ''));
+    <br>
+        <br>
+        
+        reader.onload = () => resolve(reader.result.toString().replace(/^data:(.*,)?/, ''));
+    <br>
+        <br>
+        
+         
+    <br>
+        <br>
+        
         reader.onerror = (error) => reject(error);
+    <br>
+        <br>
+        
     });
+    
+    <br>
+    <br>
+    
     let encodedString = await converter;
+    <br>
+    <br>
+    
     // make server call to upload image
+    <br><br>
     // and return the server upload promise
+    <br><br>
+    
     return fetch(serverUrl + "/recordings", {
+    <br>
+    <br>
+    
         method: "POST",
+    <br>
+    <br>
+    
         headers: {
+    <br><br>
             'Accept': 'application/json',
+    <br><br>
+    
             'Content-Type': 'application/json'
+    <br><br>
+    
         },
+    <br><br>
         body: JSON.stringify({
+    <br><br>
+    
             filename: audioFile.name,
+    <br><br>
+    
             filebytes: encodedString
+    <br><br>
+    
         })
+    <br><br>
+    
     }).then(response => {
+    <br><br>
+    
         if (response.ok) {
+    <br><br>
+    
             return response.json();
+    <br><br>
+    
         } else {
+    <br><br>
+    
             throw new HttpError(response);
+    <br><br>
+    
         }
+    <br><br>
+    
     })
+    <br><br>
+    
 }
+    <br><br>
+    
 let fromLang;
+    <br><br>
+    
 let toLang;
+    <br><br>
+
+    
 function translateRecording(audio) {
+    <br><br>
+
+    
     let fromLangElem = document.getElementById("fromLang");
+
+    <br><br>
+
+    
     fromLang = fromLangElem[fromLangElem.selectedIndex].value;
+
+    <br><br>
+
+    
     let toLangElem = document.getElementById("toLang");
+
+    <br><br>
+
+    
     toLang = toLangElem[toLangElem.selectedIndex].value;
+
+    <br><br>
+
+    
     // start translation text spinner
+
+    <br><br>
+
+    
     let textSpinner = document.getElementById("text-spinner");
+
+    <br><br>
+
+    
     textSpinner.hidden = false;
+
+    <br><br>
+
+    
     // make server call to transcribe recorded audio
+
+    <br><br>
+
+    
     return fetch(serverUrl + "/recordings/" + audio["fileId"] + "/translate-text", {
+
+    <br><br>
+
+
+    
         method: "POST",
+
+    <br><br>
+
+    
         headers: {
+
+    <br><br>
+
+    
             'Accept': 'application/json',
+
+    <br><br>
+
+    
             'Content-Type': 'application/json'
+
+    <br><br>
+
+    
         },
+
+    <br><br>
+
+    
         body: JSON.stringify({
+
+    <br><br>
+
+    
             fromLang: fromLang,
+
+    <br><br>
+
+    
             toLang: toLang
+
+    <br><br>
+
+    
         })
+
+    <br><br>
+
+    
     }).then(response => {
+
+    <br><br>
+
+    
         if (response.ok) {
+
+    <br><br>
+
+    
             return response.json();
+
+    <br><br>
+
+    
         } else {
+
+    <br><br>
+
+    
             throw new HttpError(response);
+
+    <br><br>
+
+    
         }
+
+    <br><br>
+
+    
     })
+
+    <br><br>
+
+    
 }
+
+    <br><br>
+
+    
 function updateTranslation(translation) {
+
+    <br><br>
+
+    
     // stop translation text spinner
+
+    <br><br>
+
+    
     let textSpinner = document.getElementById("text-spinner");
+
+    <br><br>
+
+    
     textSpinner.hidden = true;
+
+    <br><br>
+
+    
     let transcriptionElem = document.getElementById("transcription");
+
+    <br><br>
+
+    
     transcriptionElem.appendChild(document.createTextNode(translation["text"]));
+
+    <br><br>
+
+    
     let translationElem = document.getElementById("translation");
+
+    <br><br>
+
+    
     translationElem.appendChild(document.createTextNode(translation["translation"]["translatedText"]));
+
+    <br><br>
+
+    
     return translation
+
+    <br><br>
+    
 }
+
+    <br><br>
+
+    
 function synthesizeTranslation(translation) {
+
+    <br><br>
+
+    
     // start translation audio spinner
+
+    <br><br>
+
+    
     let audioSpinner = document.getElementById("audio-spinner");
+
+    <br><br>
+
+    
     audioSpinner.hidden = false;
+
+    <br><br>
+
+    
     // make server call to synthesize translation audio
+
+    <br><br>
+
+    
     return fetch(serverUrl + "/synthesize_speech", {
+
+
+    <br><br>
+
+
+    
         method: "POST",
+
+
+    <br><br>
+
+
+    
         headers: {
+
+    <br><br>
+
+    
             'Accept': 'application/json',
+
+    <br><br>
+
+    
             'Content-Type': 'application/json'
+
+
+    <br><br>
+
+    
         },
+
+    <br><br>
+
+    
         body: JSON.stringify({
+
+    <br><br>
+
+    
             text: translation["translation"]["translatedText"],
+
+    <br><br>
+
+    
             language: toLang
+
+    <br><br>
+
+    
         })
+
+
+    <br><br>
+
+    
     }).then(response => {
+
+
+    <br><br>
+
+    
         if (response.ok) {
+
+
+    <br><br>
+
+    
             return response.json();
+
+
+    <br><br>
+
+    
         } else {
+
+
+    <br><br>
+
+    
             throw new HttpError(response);
+
+    <br><br>
+
+    
         }
+
+    <br><br>
+
+    
     })
+
+
+    <br><br>
+
+    
 }
+
+
+    <br><br>
+
+    
 function updateTranslationAudio(audio) {
+
+    <br><br>
+
+    
     // stop translation audio spinner
+
+    <br><br>
+
+    
     let audioSpinner = document.getElementById("audio-spinner");
+
+    <br><br>
+
+    
     audioSpinner.hidden = true;
+
+    <br><br>
+
+    
     let audioElem = document.getElementById("translation-player");
+
+    
+
+    <br><br>
+    
+    
     audioElem.src = audio["audioUrl"];
+
+
+    <br><br>
+
+    
 }
+
+
+    <br><br>
+
+    
 function uploadAndTranslate() {
+
+    <br><br>
+
+    
     let toggleBtn = document.getElementById("record-toggle");
+
+    <br><br>
+
+    
     toggleBtn.disabled = true;
+
+    <br><br>
+
+    
     let translateBtn = document.getElementById("translate");
+
+
+    <br><br>
+
+
+    
     translateBtn.disabled = true;
+
+    <br><br>
+
+    
     uploadRecording()
+
+
+    <br><br>
+
+    
         .then(audio => translateRecording(audio))
+
+
+    <br><br>
+
+    
         .then(translation => updateTranslation(translation))
+
+
+    <br><br>
+
+    
         .then(translation => synthesizeTranslation(translation))
+
+
+    <br><br>
+
+    
         .then(audio => updateTranslationAudio(audio))
+
+
+    <br><br>
         .catch(error => {
+
+    <br><br>
+
+    
             alert("Error: " + error);
+
+    <br><br>
+
+    
         })
+
+    <br><br>
+
+    
     toggleBtn.disabled = false;
+
+
+    <br><br>
 }
 
-
+<br><br>
  
  
 firefox index.html
  
- 
+ <br><br>
  
  
 exit
+
+    <br><br>
 cd..
  
- 
-    
-</p>
+ <br><br>
+  
         
     </body>
 </html>
